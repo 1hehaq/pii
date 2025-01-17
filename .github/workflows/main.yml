@@ -1,0 +1,43 @@
+name: Routine Scan
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Setup
+        run: |
+          pip install requests uro > /dev/null 2>&1
+          sudo apt-get update > /dev/null 2>&1
+          sudo apt-get install -y curl jq > /dev/null 2>&1
+          mkdir -p output
+
+      - name: Execute scan
+        run: |
+          chmod +x ./pii.sh
+          ./pii.sh > output/findings.txt 2>/dev/null
+          
+          if [ -s output/findings.txt ]; then
+            {
+              echo "Timestamp: $(date -u)"
+              echo "---"
+              cat output/findings.txt
+            } > output/report.txt
+            
+            curl -H "Content-Type: multipart/form-data" \
+                 -F "file=@output/report.txt" \
+                 ${{ secrets.DISCORD_WEBHOOK_URL }} > /dev/null 2>&1
+          fi
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      - name: Cleanup
+        run: rm -rf output/
