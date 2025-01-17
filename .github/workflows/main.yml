@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 */12 * * *'
   workflow_dispatch:
+    inputs:
+      target_domain:
+        description: 'Enter Target'
+        required: false
+        type: string
 
 jobs:
   scan:
@@ -23,11 +28,16 @@ jobs:
       - name: Execute scan
         run: |
           chmod +x ./pii.sh
-          ./pii.sh > output/findings.txt 2>/dev/null
+          if [ -n "${{ github.event.inputs.target_domain }}" ]; then
+            ./pii.sh "${{ github.event.inputs.target_domain }}" > output/findings.txt 2>/dev/null
+          else
+            ./pii.sh > output/findings.txt 2>/dev/null
+          fi
           
           if [ -s output/findings.txt ]; then
             {
               echo "Timestamp: $(date -u)"
+              [ -n "${{ github.event.inputs.target_domain }}" ] && echo "Target: ${{ github.event.inputs.target_domain }}"
               echo "---"
               cat output/findings.txt
             } > output/report.txt
