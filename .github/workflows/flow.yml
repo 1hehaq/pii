@@ -25,19 +25,17 @@ jobs:
           SSH_CMD=$(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')
           WEB_URL=$(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')
           
-          # Create JSON payload with the required formatting
           JSON_MSG=$(jq -n \
             --arg ssh "🔐 **SSH Access Details**" \
             --arg sshCmd "**SSH Command:** ||\`$SSH_CMD\`||" \
             --arg webUrl "**Web URL:** [view on web]($WEB_URL)" \
             --arg note "**Note:** _Session will remain active for ${{ github.event.inputs.sleep_duration_hours }} hour(s)_" \
             '{content: "\($ssh)\n\n\($sshCmd)\n\($webUrl)\n\n\($note)"}')
-
           curl -H "Content-Type: application/json" \
             -d "$JSON_MSG" \
             ${{ secrets.DISCORD_WEBHOOK_URL }}
       
       - name: Keep Alive
         run: |
-          SLEEP_DURATION_SECONDS=$(( ${GITHUB_EVENT_INPUT_SLEEP_DURATION_HOURS} * 3600 ))
+          SLEEP_DURATION_SECONDS=$(( $(echo ${{ github.event.inputs.sleep_duration_hours }}) * 3600 ))
           sleep $SLEEP_DURATION_SECONDS
