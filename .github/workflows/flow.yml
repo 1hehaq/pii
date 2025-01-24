@@ -1,6 +1,12 @@
 name: Hello
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      sleep_duration_hours:
+        description: 'Limit (max: 6hrs)'
+        required: false
+        default: '1'
 
 jobs:
   Hey:
@@ -19,15 +25,19 @@ jobs:
           SSH_CMD=$(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')
           WEB_URL=$(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')
           
+          # Create JSON payload with the required formatting
           JSON_MSG=$(jq -n \
             --arg ssh "🔐 **SSH Access Details**" \
-            --arg sshCmd "**SSH Command:** \`$SSH_CMD\`" \
-            --arg webUrl "**Web URL:** $WEB_URL" \
-            --arg note "**Note:** Session will remain active for 1 hour" \
+            --arg sshCmd "**SSH Command:** ||\`$SSH_CMD\`||" \
+            --arg webUrl "**Web URL:** [view on web]($WEB_URL)" \
+            --arg note "**Note:** _Session will remain active for ${{ github.event.inputs.sleep_duration_hours }} hour(s)_" \
             '{content: "\($ssh)\n\n\($sshCmd)\n\($webUrl)\n\n\($note)"}')
 
           curl -H "Content-Type: application/json" \
             -d "$JSON_MSG" \
             ${{ secrets.DISCORD_WEBHOOK_URL }}
+      
       - name: Keep Alive
-        run: sleep 1h  # alive for 1 hour (adjust according to your need; max 6 hrs)
+        run: |
+          SLEEP_DURATION_SECONDS=$(( ${GITHUB_EVENT_INPUT_SLEEP_DURATION_HOURS} * 3600 ))
+          sleep $SLEEP_DURATION_SECONDS
