@@ -1,0 +1,33 @@
+name: Hello
+
+on: workflow_dispatch
+
+jobs:
+  Hey:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Tmate Session
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tmate openssh-client
+          
+          ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
+          
+          tmate -S /tmp/tmate.sock new-session -d
+          tmate -S /tmp/tmate.sock wait tmate-ready
+          
+          SSH_CMD=$(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')
+          WEB_URL=$(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')
+          
+          JSON_MSG=$(jq -n \
+            --arg ssh "🔐 **SSH Access Details**" \
+            --arg sshCmd "**SSH Command:** \`$SSH_CMD\`" \
+            --arg webUrl "**Web URL:** $WEB_URL" \
+            --arg note "**Note:** Session will remain active for 1 hour" \
+            '{content: "\($ssh)\n\n\($sshCmd)\n\($webUrl)\n\n\($note)"}')
+
+          curl -H "Content-Type: application/json" \
+            -d "$JSON_MSG" \
+            ${{ secrets.DISCORD_WEBHOOK_URL }}
+      - name: Keep Alive
+        run: sleep 1h  # alive for 1 hour (adjust according to your need; max 6 hrs)
